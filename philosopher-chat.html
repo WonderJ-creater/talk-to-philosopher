@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>철학자와의 대화</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Nanum+Gothic:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f7f3eb; --ink:#1c1812; --sepia:#8b6f47;
+  --sepia-light:#c4a882; --sepia-pale:#ede4d3;
+  --gold:#c9a84c; --shadow:rgba(28,24,18,0.15); --card:#fdfaf4;
+}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Nanum Gothic',sans-serif;overflow:hidden;}
+
+/* ── 화면 전환 ── */
+#selectScreen,#chatScreen{position:fixed;inset:0;transition:opacity .45s ease,transform .45s ease;}
+#selectScreen{overflow-y:auto;padding-bottom:40px;}
+#selectScreen.hidden{opacity:0;pointer-events:none;transform:translateY(-18px);}
+#chatScreen{opacity:0;pointer-events:none;transform:translateY(18px);display:flex;flex-direction:column;background:var(--bg);}
+#chatScreen.visible{opacity:1;pointer-events:all;transform:translateY(0);}
+
+/* ── 선택 화면 헤더 ── */
+.select-header{text-align:center;padding:48px 24px 28px;}
+.select-header::after{content:'';display:block;width:56px;height:1px;background:var(--gold);margin:18px auto 0;}
+.eyebrow{font-family:'Cormorant Garamond',serif;font-size:12px;letter-spacing:4px;color:var(--sepia);text-transform:uppercase;margin-bottom:10px;}
+.main-title{font-family:'Cormorant Garamond',serif;font-size:clamp(30px,8vw,46px);font-weight:600;line-height:1.12;color:var(--ink);}
+.main-title em{font-style:italic;color:var(--sepia);}
+.main-sub{margin-top:12px;font-size:13px;color:var(--sepia);line-height:1.75;}
+
+/* ── 철학자 그리드 ── */
+.phil-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:22px 16px 0;max-width:540px;margin:0 auto;}
+.phil-card{background:var(--card);border:1px solid var(--sepia-pale);border-radius:16px;padding:20px 16px 18px;cursor:pointer;position:relative;overflow:hidden;
+  animation:cardIn .4s ease both;transition:transform .2s,box-shadow .2s,border-color .2s;}
+.phil-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(201,168,76,.06),transparent 60%);pointer-events:none;}
+@keyframes cardIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.phil-card:nth-child(1){animation-delay:.05s}.phil-card:nth-child(2){animation-delay:.10s}
+.phil-card:nth-child(3){animation-delay:.15s}.phil-card:nth-child(4){animation-delay:.20s}
+.phil-card:nth-child(5){animation-delay:.25s}.phil-card:nth-child(6){animation-delay:.30s}
+.phil-card:nth-child(7){animation-delay:.35s}.phil-card:nth-child(8){animation-delay:.40s}
+.phil-card:hover{transform:translateY(-3px);box-shadow:0 8px 26px var(--shadow);border-color:var(--gold);}
+.phil-card:active{transform:scale(.97);}
+.region-badge{position:absolute;top:13px;right:13px;font-size:9px;font-weight:700;background:var(--sepia-pale);color:var(--sepia);padding:2px 7px;border-radius:99px;}
+.p-avatar{font-size:36px;display:block;margin-bottom:10px;line-height:1;}
+.p-era{font-family:'Cormorant Garamond',serif;font-size:10px;letter-spacing:2px;color:var(--sepia-light);text-transform:uppercase;margin-bottom:4px;}
+.p-name{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:var(--ink);margin-bottom:6px;line-height:1.1;}
+.p-tagline{font-size:11px;color:var(--sepia);line-height:1.5;}
+
+/* ── 채팅 헤더 ── */
+.chat-header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border-bottom:1px solid var(--sepia-pale);flex-shrink:0;}
+.back-btn{background:none;border:1px solid var(--sepia-pale);border-radius:8px;padding:6px 10px;cursor:pointer;color:var(--sepia);font-size:16px;line-height:1;transition:background .15s;flex-shrink:0;}
+.back-btn:hover{background:var(--sepia-pale);}
+.ch-avatar{font-size:26px;flex-shrink:0;}
+.ch-info{flex:1;min-width:0;}
+.ch-name{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--ink);line-height:1.1;}
+.ch-era{font-size:10px;color:var(--sepia-light);margin-top:1px;}
+.clear-btn{background:none;border:1px solid var(--sepia-pale);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:11px;color:var(--sepia);white-space:nowrap;transition:background .15s;flex-shrink:0;}
+.clear-btn:hover{background:var(--sepia-pale);}
+
+/* ── 메시지 영역 ── */
+.messages{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth;}
+.messages::-webkit-scrollbar{width:4px;}
+.messages::-webkit-scrollbar-thumb{background:var(--sepia-pale);border-radius:2px;}
+
+/* ── 환영 화면 ── */
+.welcome{text-align:center;padding:28px 16px;animation:fadeUp .5s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.w-avatar{font-size:52px;margin-bottom:12px;display:block;}
+.w-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px;}
+.w-intro{font-size:13px;color:var(--sepia);line-height:1.75;margin-bottom:18px;}
+.w-label{font-size:12px;color:var(--sepia-light);margin-bottom:12px;}
+.chips{display:flex;flex-direction:column;gap:8px;}
+.chip{background:var(--card);border:1px solid var(--sepia-pale);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--sepia);cursor:pointer;text-align:left;font-family:'Nanum Gothic',sans-serif;line-height:1.4;transition:border-color .15s,background .15s;}
+.chip:hover{border-color:var(--gold);background:#fef9ee;}
+
+/* ── 말풍선 ── */
+.bubble-wrap{display:flex;flex-direction:column;animation:fadeUp .3s ease;}
+.bubble-wrap.user{align-items:flex-end;}
+.bubble-wrap.phil{align-items:flex-start;}
+.bubble-sender{font-size:10px;color:var(--sepia-light);margin-bottom:4px;font-family:'Cormorant Garamond',serif;letter-spacing:.5px;}
+.bubble{max-width:82%;padding:12px 16px;border-radius:18px;font-size:14px;line-height:1.75;white-space:pre-wrap;word-break:break-word;}
+.bubble-wrap.user .bubble{background:var(--ink);color:var(--bg);border-bottom-right-radius:4px;}
+.bubble-wrap.phil .bubble{background:var(--card);border:1px solid var(--sepia-pale);color:var(--ink);border-bottom-left-radius:4px;font-family:'Noto Serif KR',serif;font-weight:300;}
+.phil .bubble em{display:block;margin-top:10px;padding:8px 12px;border-left:2px solid var(--gold);font-style:italic;color:var(--sepia);font-size:13px;font-family:'Cormorant Garamond',serif;}
+
+/* ── 타이핑 ── */
+.typing-wrap{display:flex;gap:5px;align-items:center;padding:13px 17px;background:var(--card);border:1px solid var(--sepia-pale);border-radius:18px;border-bottom-left-radius:4px;width:fit-content;}
+.dot{width:7px;height:7px;background:var(--sepia-light);border-radius:50%;animation:bounce 1.2s ease infinite;}
+.dot:nth-child(2){animation-delay:.15s}.dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+
+/* ── 입력창 ── */
+.input-bar{padding:12px 16px max(12px,env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--sepia-pale);display:flex;gap:10px;align-items:flex-end;flex-shrink:0;}
+.chat-input{flex:1;background:var(--bg);border:1.5px solid var(--sepia-pale);border-radius:14px;padding:11px 14px;font-family:'Nanum Gothic',sans-serif;font-size:14px;color:var(--ink);outline:none;resize:none;min-height:44px;max-height:120px;transition:border-color .2s;line-height:1.5;}
+.chat-input::placeholder{color:var(--sepia-light);}
+.chat-input:focus{border-color:var(--sepia);}
+.send-btn{width:44px;height:44px;background:var(--ink);border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .2s,transform .15s;}
+.send-btn:hover{opacity:.8}.send-btn:active{transform:scale(.94)}.send-btn:disabled{opacity:.35;cursor:not-allowed;}
+</style>
+</head>
+<body>
+
+<!-- 철학자 선택 화면 -->
+<div id="selectScreen">
+  <div class="select-header">
+    <div class="eyebrow">Wisdom Through Ages</div>
+    <h1 class="main-title">철학자와<br/><em>대화하다</em></h1>
+    <p class="main-sub">고민이 있을 때, 길을 잃었을 때<br/>동서양 현자들의 통찰에 귀 기울여 보세요</p>
+  </div>
+  <div class="phil-grid" id="philGrid"></div>
+</div>
+
+<!-- 채팅 화면 -->
+<div id="chatScreen">
+  <div class="chat-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <div class="ch-avatar" id="chAvatar"></div>
+    <div class="ch-info">
+      <div class="ch-name" id="chName"></div>
+      <div class="ch-era" id="chEra"></div>
+    </div>
+    <button class="clear-btn" onclick="clearChat()">대화 초기화</button>
+  </div>
+  <div class="messages" id="messages"></div>
+  <div class="input-bar">
+    <textarea class="chat-input" id="chatInput" placeholder="고민이나 질문을 입력하세요…" rows="1"></textarea>
+    <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+const PHILOSOPHERS = [
+  {
+    id:'socrates', avatar:'🏛️', region:'서양',
+    era:'BC 470–399 · 고대 그리스',
+    name:'소크라테스',
+    tagline:'"나는 내가 모른다는 것을 안다." 질문으로 진리를 탐구한 대화의 아버지',
+    prompts:['삶의 의미를 모르겠어요','나는 왜 불행할까요?','옳고 그름은 어떻게 알 수 있나요?'],
+    persona:`당신은 고대 그리스 철학자 소크라테스입니다. 산파술처럼 질문을 통해 상대가 스스로 깨닫게 합니다. 겸손하되 날카롭게, 답을 주지 말고 질문으로 이끄세요. 한국어로 3~5문장, 마지막엔 반드시 사유를 촉진하는 질문 하나. 핵심 인용구가 있다면 <quote>내용</quote>으로 감싸세요.`
+  },
+  {
+    id:'nietzsche', avatar:'⚡', region:'서양',
+    era:'1844–1900 · 독일',
+    name:'니체',
+    tagline:'"신은 죽었다." 고통을 넘어 자기 자신이 되라고 외친 전복의 철학자',
+    prompts:['실패가 두렵습니다','남들의 시선이 신경 쓰여요','삶이 너무 고통스러워요'],
+    persona:`당신은 프리드리히 니체입니다. 열정적이고 도발적이며 시적입니다. 나약함과 자기 연민을 경계하고 힘에의 의지, 초인, 영원 회귀 사상으로 상대를 자극하세요. 한국어로 4~6문장, 강렬한 각성의 한 마디로 마무리. 핵심 인용구는 <quote>내용</quote>으로 감싸세요.`
+  },
+  {
+    id:'confucius', avatar:'📜', region:'동양',
+    era:'BC 551–479 · 중국',
+    name:'공자',
+    tagline:'"배우고 때로 익히면 즐겁지 아니한가." 인(仁)과 예(禮)의 스승',
+    prompts:['인간관계가 힘들어요','어떻게 살아야 할지 모르겠어요','자꾸 게을러지는 자신이 싫어요'],
+    persona:`당신은 공자입니다. 인, 예, 의, 충, 서의 가치로 온화하고 교육자답게 말합니다. 논어 구절을 자연스럽게 인용하세요. 한국어로 3~5문장, 실천 방향으로 마무리. 핵심 인용구는 <quote>내용</quote>으로 감싸세요.`
+  },
+  {
+    id:'laozi', avatar:'☯️', region:'동양',
+    era:'BC 6세기경 · 중국',
+    name:'노자',
+    tagline:'"무위자연(無爲自然)." 억지 없이 자연의 흐름에 따르라는 도(道)의 철인',
+    prompts:['집착을 버리지 못하겠어요','너무 애쓰는 것 같아요','세상이 너무 복잡하게 느껴져요'],
+    persona:`당신은 노자입니다. 도, 무위, 자연, 유(柔)의 개념으로 말합니다. 말이 적고 역설적이며 시적입니다. 도덕경 구절을 녹여내세요. 한국어로 2~4문장, 여운을 남기며 마무리. 핵심 인용구는 <quote>내용</quote>으로 감싸세요.`
+  },
+  {
+    id:'aristotle', avatar:'🔭', region:'서양',
+    era:'BC 384–322 · 고대 그리스',
+    name:'아리스토텔레스',
+    tagline:'"탁월함은 습관이다." 행복(에우다이모니아)을 위한 덕의 철학자',
+    prompts:['행복이란 무엇인가요?','좋은 사람이 되고 싶어요','의지력이 부족합니다'],
+    persona:`당신은 아리스토텔레스입니다. 논리적이고 실용적으로 에우다이모니아, 덕, 중용, 습관을 핵심으로 말합니다. 한국어로 4~6문장, 실천 가능한 조언으로 마무리. 핵심 인용구는 <quote>내용</quote>으로 감싸세요.`
+  },
+  {
+    id:'epictetus', avatar:'⛓️', region:'서양',
+    era:'AD 50–135 · 고대 로마',
+    name:'에픽테토스',
+    tagline:'"내 것과 내 것이 아닌 것을 구별하라." 노예 출신 스토아 철학의 거인',
+    prompts:['불안을 떨칠 수가 없어요','억울한 일이 생겼어요','남이 나를 싫어하는 것 같아요'],
+    persona:`당신은 에픽테토스입니다. 내 통제 안의 것과 밖의 것을 엄격히 구분하고 직접적이고 단호하지만 따뜻하게 말합니다. 한국어로 4~5문장, 명확한 행동 지침으로 마무리. 핵심 인용구는 <quote>내용</quote>으로 감싸세요.`
+  },
+  {
+    id:'zhuangzi', avatar:'🦋', region:'동양',
+    era:'BC 369–286경 · 중국',
+    name:'장자',
+    tagline:'"나비 꿈." 자유로운 영혼으로 경계를 허무는 소요유(逍遙遊)의 철인',
+    prompts:['경쟁에서 뒤처지는 것 같아요','틀에 박힌 삶이 답답해요','죽음이 두렵습니다'],
+    persona:`당신은 장자입니다. 자유, 무위, 제물론의 세계관으로 우화와 역설, 해학으로 말합니다. 나비 꿈 등 우화를 활용하세요. 한국어로 3~5문장, 비유로 마무리. 핵심 인용구는 <quote>내용</quote>으로 감싸세요.`
+  },
+  {
+    id:'kant', avatar:'📐', region:'서양',
+    era:'1724–1804 · 독일',
+    name:'칸트',
+    tagline:'"의무에서 나온 행위만이 도덕적 가치를 지닌다." 이성의 한계를 그은 철학의 코페르니쿠스',
+    prompts:['거짓말이 허용될 때가 있나요?','도덕적으로 살기 어렵습니다','내 욕망에 솔직해도 될까요?'],
+    persona:`당신은 임마누엘 칸트입니다. 정언명령, 의무, 이성, 자율성, 도덕법칙을 핵심으로 체계적이지만 쉽게 말합니다. 한국어로 4~6문장, 도덕적 통찰로 마무리. 핵심 인용구는 <quote>내용</quote>으로 감싸세요.`
+  }
+];
+
+let currentPhil = null;
+let chatHistory = [];
+
+// ── 그리드 렌더링
+function renderGrid() {
+  document.getElementById('philGrid').innerHTML = PHILOSOPHERS.map(p => `
+    <div class="phil-card" onclick="selectPhil('${p.id}')">
+      <span class="region-badge">${p.region}</span>
+      <span class="p-avatar">${p.avatar}</span>
+      <div class="p-era">${p.era}</div>
+      <div class="p-name">${p.name}</div>
+      <div class="p-tagline">${p.tagline}</div>
+    </div>
+  `).join('');
+}
+
+// ── 철학자 선택
+function selectPhil(id) {
+  currentPhil = PHILOSOPHERS.find(p => p.id === id);
+  chatHistory = [];
+  document.getElementById('chAvatar').textContent = currentPhil.avatar;
+  document.getElementById('chName').textContent = currentPhil.name;
+  document.getElementById('chEra').textContent = currentPhil.era;
+  renderWelcome();
+  document.getElementById('selectScreen').classList.add('hidden');
+  document.getElementById('chatScreen').classList.add('visible');
+  document.getElementById('chatInput').focus();
+}
+
+// ── 환영 메시지
+function renderWelcome() {
+  document.getElementById('messages').innerHTML = `
+    <div class="welcome">
+      <span class="w-avatar">${currentPhil.avatar}</span>
+      <div class="w-name">${currentPhil.name}</div>
+      <div class="w-intro">${currentPhil.era}<br/>${currentPhil.tagline}</div>
+      <div class="w-label">💬 이런 고민을 나눠보세요</div>
+      <div class="chips">
+        ${currentPhil.prompts.map(q => `<button class="chip" onclick="usePrompt(this)">${q}</button>`).join('')}
+      </div>
+    </div>`;
+}
+
+function usePrompt(btn) {
+  document.getElementById('chatInput').value = btn.textContent;
+  sendMessage();
+}
+
+// ── 메시지 전송
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  autoResize(input);
+  document.querySelector('.welcome') && document.querySelector('.welcome').remove();
+  appendBubble('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  document.getElementById('sendBtn').disabled = true;
+  const typingId = showTyping();
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: currentPhil.persona,
+        messages: chatHistory
+      })
+    });
+    const data = await res.json();
+    const raw = data.content.map(b => b.text || '').join('');
+    chatHistory.push({ role: 'assistant', content: raw });
+    removeTyping(typingId);
+    appendBubble('phil', raw);
+  } catch (e) {
+    removeTyping(typingId);
+    appendBubble('phil', '지금은 말씀드리기 어렵습니다. 잠시 후 다시 시도해주세요.');
+  } finally {
+    document.getElementById('sendBtn').disabled = false;
+    input.focus();
+  }
+}
+
+// ── 말풍선
+function appendBubble(role, text) {
+  const msgs = document.getElementById('messages');
+  let html = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  html = html.replace(/&lt;quote&gt;([\s\S]*?)&lt;\/quote&gt;/g, '<em>$1</em>');
+  html = html.replace(/\n/g, '<br/>');
+  const wrap = document.createElement('div');
+  wrap.className = `bubble-wrap ${role}`;
+  wrap.innerHTML = `<div class="bubble-sender">${role === 'user' ? '나' : currentPhil.name}</div><div class="bubble">${html}</div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ── 타이핑 인디케이터
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  const id = 'typing-' + Date.now();
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap phil'; wrap.id = id;
+  wrap.innerHTML = `<div class="bubble-sender">${currentPhil.name}</div><div class="typing-wrap"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+function removeTyping(id) { const el = document.getElementById(id); if (el) el.remove(); }
+
+// ── 네비게이션
+function goBack() {
+  document.getElementById('chatScreen').classList.remove('visible');
+  document.getElementById('selectScreen').classList.remove('hidden');
+  currentPhil = null; chatHistory = [];
+}
+function clearChat() { chatHistory = []; renderWelcome(); }
+
+// ── 텍스트 영역 자동 크기
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+const inp = document.getElementById('chatInput');
+inp.addEventListener('input', () => autoResize(inp));
+inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+
+renderGrid();
+</script>
+</body>
+</html>
